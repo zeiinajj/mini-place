@@ -3,9 +3,16 @@ import { z } from "zod";
 import { env } from "~/env"
 import { auth } from "~/lib/auth"
 import { headers } from "next/headers";
-import { Session } from "inspector/promises";
+import { Ratelimit } from "@upstash/ratelimit";
+import { redis } from "~/server/redis";
+
+const ratelimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(20, "60 s"),
+})
 
 export async function DELETE(req: Request) {
+
     const session = await auth.api.getSession({
         headers: await headers()
     })
@@ -32,7 +39,7 @@ export async function DELETE(req: Request) {
             { status: 404 })
     }
 
-    if (user.role != "admin" ) {
+    if (user.role != "admin") {
 
         return Response.json({
             error: "Access denied"
@@ -106,12 +113,25 @@ export async function PATCH(req: Request) {
     }
 
 
-    if (user.isBanned ) {
+    if (user.isBanned) {
 
         return Response.json({
             error: "Access denied"
         },
             { status: 404 })
+    }
+
+    const identifier = user.id;
+    const { success, pending, limit, remaining } = await ratelimit.limit(identifier);
+    if (!success) {
+        
+        const res =  Response.json({
+            message: ``
+        }, {
+            status: 429
+        })
+
+        
     }
 
 
