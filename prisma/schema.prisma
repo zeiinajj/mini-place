@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -5,4 +6,95 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  user
+}
+
+model User {
+  id String @id
+
+  username        String
+  pixels          Pixel[]
+  name            String
+  email           String
+  emailVerified   Boolean
+  image           String?
+  role            Role      @default(user)
+  createdAt       DateTime
+  updatedAt       DateTime
+  displayUsername String?
+  sessions        Session[]
+  accounts        Account[]
+  isBanned        Boolean   @default(false)
+  bannedAt        DateTime?
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Pixel {
+  id        Int       @id @default(autoincrement())
+  x         Int
+  y         Int
+  color     String
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  isActive  Boolean   @default(true)
+  user      User      @relation(fields: [user_id], references: [id])
+  user_id   String
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model RateLimit {
+  id          String  @id
+  key         String?
+  count       Int?
+  lastRequest BigInt?
 }
